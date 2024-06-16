@@ -1,4 +1,5 @@
 import random
+import os
 import pygame
 from pygame.constants import QUIT, K_UP, K_DOWN, K_LEFT, K_RIGHT
 
@@ -8,6 +9,8 @@ FPS = pygame.time.Clock()
 
 WIDTH = 1200
 HEIGTH = 800
+
+FONT= pygame.font.SysFont('Verdana', 20)
 
 COLOR_WHITE = (255, 255, 255)
 COLOR_BLACK = (0, 0, 0)
@@ -20,27 +23,29 @@ BONUS_SIZE = (30, 30)
 
 main_display = pygame.display.set_mode((WIDTH, HEIGTH))
 
-player = pygame.Surface(PLAYER_SIZE)
-player.fill(COLOR_WHITE)
-player_rect = player.get_rect()
-player_move_up = [0, -2]
-player_move_down = [0, 2]
-player_move_left = [-2, 0]
-player_move_right = [2, 0]
+bg = pygame.transform.scale(pygame.image.load('./resourses/images/background.png'), (WIDTH, HEIGTH - 30))
+bg_X1 = 0
+bg_X2 = bg.get_width()
+bg_move = 3
+
+player = pygame.image.load('./resourses/images/goose/1-1.png').convert_alpha()
+player_rect = pygame.Rect(0, 400, *PLAYER_SIZE)
+player_move_up = [0, -4]
+player_move_down = [0, 4]
+player_move_left = [-4, 0]
+player_move_right = [4, 0]
 
 
 def create_enemy():
-    enemy = pygame.Surface(ENEMY_SIZE)
-    enemy.fill(COLOR_RED)
-    enemy_rect = pygame.Rect(WIDTH, random.randint(0, HEIGTH), *ENEMY_SIZE)
+    enemy = pygame.image.load('./resourses/images/enemy.png').convert_alpha()
+    enemy_rect = pygame.Rect(WIDTH, random.randint(50, HEIGTH - 50), *ENEMY_SIZE)
     enemy_move = [random.randint(-5, -1), 0]
     return [enemy, enemy_rect, enemy_move]
 
 
 def create_bonus():
-    bonus = pygame.Surface(BONUS_SIZE)
-    bonus.fill(COLOR_BLUE)
-    bonus_rect = pygame.Rect(random.randint(100, WIDTH - 100), 0, *BONUS_SIZE)
+    bonus = pygame.image.load('./resourses/images/bonus.png').convert_alpha()
+    bonus_rect = pygame.Rect(random.randint(100, WIDTH - 100), 30, *BONUS_SIZE)
     bonus_move = [0, random.randint(1, 5)]
     return [bonus, bonus_rect, bonus_move]
 
@@ -48,11 +53,14 @@ def create_bonus():
 CREATE_ENEMY = pygame.USEREVENT + 1
 pygame.time.set_timer(CREATE_ENEMY, 1500)
 
-CREATE_BONUS = pygame.USEREVENT + 1
+CREATE_BONUS = pygame.USEREVENT + 2
 pygame.time.set_timer(CREATE_BONUS, 1500)
 
 enemies = []
 bonuses = []
+
+score = 0
+health = 100
 
 playing = True
 
@@ -67,7 +75,17 @@ while playing:
         if event.type == CREATE_BONUS:
             bonuses.append(create_bonus())
 
-    main_display.fill(COLOR_BLACK)
+    bg_X1 -= bg_move
+    bg_X2 -= bg_move
+
+    if bg_X1 < -bg.get_width():
+        bg_X1 = bg.get_width()
+
+    if bg_X2 < -bg.get_width():
+        bg_X2 = bg.get_width()
+    
+    main_display.blit(bg, (bg_X1, 30))
+    main_display.blit(bg, (bg_X2, 30))
 
     keys = pygame.key.get_pressed()
 
@@ -87,10 +105,22 @@ while playing:
         enemy[1] = enemy[1].move(enemy[2])
         main_display.blit(enemy[0], enemy[1])
 
+        if player_rect.colliderect(enemy[1]):
+            health -= 25
+            enemies.pop(enemies.index(enemy))
+            if health <= 0:
+                playing = False
+
     for bonus in bonuses:
         bonus[1] = bonus[1].move(bonus[2])
         main_display.blit(bonus[0], bonus[1])
 
+        if player_rect.colliderect(bonus[1]):
+            score += 100
+            bonuses.pop(bonuses.index(bonus))
+
+    main_display.blit(FONT.render(str(score), True, COLOR_WHITE), (WIDTH - 100, 2))
+    main_display.blit(FONT.render(str(health), True, COLOR_RED), (100, 2))
     main_display.blit(player, player_rect)
 
     pygame.display.flip()
